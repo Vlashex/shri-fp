@@ -17,6 +17,17 @@
 import Api from "../tools/api";
 
 const api = new Api();
+const getNumbersBase = api.get("https://api.tech/numbers/base");
+const getAnimalById = (id) => {
+  const request = api.get(`https://animals.tech/${id}`);
+  return request({});
+};
+
+const buildNumberBaseParams = (n) => ({
+  from: 10,
+  to: 2,
+  number: n.toString(),
+});
 
 const tap = (fn) => (v) => {
   fn(v);
@@ -28,10 +39,13 @@ const isNumberString = (v) => /^[0-9.]+$/.test(v);
 const validate = (v) =>
   v.length > 2 && v.length < 10 && isNumberString(v) && parseFloat(v) > 0;
 
+const extractResult = ({ result }) => result;
+
 const round = (n) => Math.round(n);
 const length = (s) => s.length;
 const square = (n) => n * n;
 const mod3 = (n) => n % 3;
+const toString = (n) => n.toString();
 
 const processSequence = ({ value, writeLog, handleSuccess, handleError }) => {
   const log = tap(writeLog);
@@ -42,28 +56,25 @@ const processSequence = ({ value, writeLog, handleSuccess, handleError }) => {
   }
 
   Promise.resolve(value)
-    .then(log)
-    .then(parseFloat)
-    .then(round)
-    .then(log)
-    .then((n) =>
-      api.get("https://api.tech/numbers/base")({
-        from: 10,
-        to: 2,
-        number: n.toString(),
-      })
-    )
-    .then(({ result }) => result)
-    .then(log)
-    .then(length)
-    .then(log)
-    .then(square)
-    .then(log)
-    .then(mod3)
-    .then(log)
-    .then((id) => api.get(`https://animals.tech/${id}`)({}))
-    .then(({ result }) => handleSuccess(result))
-    .catch(handleError);
+    .then(log) // Записываем исходную строку
+    .then(parseFloat) // Преобразуем в число
+    .then(round) // Округляем до ближайшего целого
+    .then(log) // Логируем округлённое число
+    .then(toString) // Превращаем число обратно в строку
+    .then(buildNumberBaseParams) // Формируем параметры для запроса перевода в двоичную систему
+    .then(getNumbersBase) // Запрашиваем перевод числа в двоичный формат
+    .then(extractResult) // Берём из ответа нужное значение
+    .then(log) // Логируем двоичное число
+    .then(length) // Считаем длину двоичной строки
+    .then(log) // Логируем длину
+    .then(square) // Возводим длину в квадрат
+    .then(log) // Логируем результат
+    .then(mod3) // Берём остаток от деления на 3
+    .then(log) // Логируем остаток
+    .then(getAnimalById) // Получаем животное по id
+    .then(extractResult) // Берём имя животного из ответа
+    .then(handleSuccess) // Завершаем успешным результатом
+    .catch(handleError); // Обрабатываем ошибку в любом шаге цепочки
 };
 
 export default processSequence;
